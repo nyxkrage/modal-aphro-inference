@@ -1,34 +1,18 @@
 import modal
-
-aphro_image = modal.Image.from_registry(tag="ubuntu:jammy", add_python="3.11").pip_install(
-    "https://pid1.sh/ai/aphrodite_engine-0.5.4.dev0-cp311-cp311-linux_x86_64.whl",
-    "tensorizer>=2.9.0",
-)
-
-MODELS_DIR = "/models"
-MODEL_NAME = "anthracite-org/magnum-32b-v2"
-MODEL_REVISION = "9db035c0017446149f02b742a8f3c2fc896588bf"
-MINUTES = 60  # seconds
-HOURS = 60 * MINUTES
+from common import APHRO_IMAGE, GPU_CLASS, IDLE_TIMEOUT, MODELS_VOLUME, MODELS_DIR, MODEL_NAME, MAX_CONTENT, NGPU, TOKEN
 
 try:
-    volume = modal.Volume.lookup("models", create_if_missing=False)
+    volume = modal.Volume.lookup(MODELS_VOLUME, create_if_missing=False)
 except modal.exception.NotFoundError:
-    raise Exception("Download models first with modal run download_llama.py")
-
-
+    raise Exception("Download models first with modal run download_model.py")
 
 app = modal.App("aphro-openai-server")
 
-N_GPU = 1
-TOKEN = "super-secret-token"  # auth token. for production use, replace with a modal.Secret
-
-
 @app.function(
-    image=aphro_image,
-    gpu=modal.gpu.A100(count=N_GPU, size="80GB"),
-    container_idle_timeout=1 * MINUTES,
-    timeout=24 * HOURS,
+    image=APHRO_IMAGE,
+    gpu=GPU_CLASS,
+    container_idle_timeout=IDLE_TIMEOUT,
+    timeout=24 * 60 * 60,
     allow_concurrent_inputs=100,
     volumes={MODELS_DIR: volume},
 )
@@ -77,9 +61,9 @@ def serve():
 
     engine_args = AsyncEngineArgs(
         model=MODELS_DIR + "/" + MODEL_NAME,
-        tensor_parallel_size=N_GPU,
+        tensor_parallel_size=NGPU,
         gpu_memory_utilization=0.90,
-        max_model_len=8192,
+        max_model_len=MAX_CONTENT,
         enforce_eager=True,
         load_format="tensorizer",
         model_loader_extra_config={"tensorizer_uri": MODELS_DIR + "/" + MODEL_NAME + "/model.tensors"}

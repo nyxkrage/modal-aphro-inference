@@ -1,18 +1,10 @@
-# ---
-# args: ["--force-download"]
-# ---
 import modal
+from common import MODELS_VOLUME, MODELS_DIR, MODEL_NAME, MODEL_REVISION, ENSURE_SAFETENSORS
 
-MODELS_DIR = "/models"
-MODEL_NAME = "anthracite-org/magnum-32b-v2"
-MODEL_REVISION = "9db035c0017446149f02b742a8f3c2fc896588bf"
-MINUTES = 60
-HOURS = 60 * MINUTES
-
-volume = modal.Volume.from_name("models", create_if_missing=True)
+volume = modal.Volume.from_name(MODELS_VOLUME, create_if_missing=True)
 
 image = (
-    modal.Image.debian_slim(python_version="3.10")
+    modal.Image.debian_slim(python_version="3.11")
     .pip_install(
         [
             "huggingface_hub",  # download models from the Hugging Face Hub
@@ -26,32 +18,27 @@ app = modal.App(
     image=image
 )
 
-@app.function(volumes={MODELS_DIR: volume}, timeout=4 * HOURS)
-def download_model(model_name, model_revision, force_download=False):
+@app.function(volumes={MODELS_DIR: volume}, timeout=4 * 60 * 60)
+def download_model():
     from huggingface_hub import snapshot_download
 
     volume.reload()
 
     snapshot_download(
-        model_name,
-        local_dir=MODELS_DIR + "/" + model_name,
+        MODEL_NAME,
+        local_dir=MODELS_DIR + "/" + MODEL_NAME,
         ignore_patterns=[
             "*.pt",
             "*.bin",
             "*.pth",
             "original/*",
-        ],  # Ensure safetensors
-        revision=model_revision,
-        force_download=force_download,
+        ] if ENSURE_SAFETENSORS else [],
+        revision=MODEL_REVISION,
     )
 
     volume.commit()
 
 
 @app.local_entrypoint()
-def main(
-    model_name: str = MODEL_NAME,
-    model_revision: str = MODEL_REVISION,
-    force_download: bool = False,
-):
-    download_model.remote(model_name, model_revision, force_download)
+def main():
+    download_model.remote()
