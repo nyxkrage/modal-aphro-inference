@@ -65,8 +65,9 @@ def serve():
         gpu_memory_utilization=0.90,
         max_model_len=MAX_CONTENT,
         enforce_eager=True,
+        disable_custom_all_reduce=True,
         load_format="tensorizer",
-        model_loader_extra_config={"tensorizer_uri": MODELS_DIR + "/" + MODEL_NAME + "/model.tensors"}
+        model_loader_extra_config={"tensorizer_uri": MODELS_DIR + "/" + MODEL_NAME + "/model-%03d.tensors" if NGPU > 1 else "/model.tensors"}
     )
 
     engine = AsyncLLMEngine.from_engine_args(

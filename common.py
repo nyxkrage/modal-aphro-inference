@@ -13,6 +13,8 @@ APHRO_IMAGE = modal.Image.from_registry(tag="ubuntu:jammy", add_python="3.11").p
     "https://pid1.sh/ai/aphrodite_engine-0.5.4.dev0-cp311-cp311-linux_x86_64.whl",
     "tensorizer>=2.9.0",
 )
-
 MODELS_DIR="/models"
-GPU_CLASS=getattr(modal.gpu, GPU.split(":")[0] if GPU.startswith("A100") else GPU)(count=NGPU, size=GPU.split(":")[1] if GPU.startswith("A100") else None)
+if ":" in GPU:
+    GPU_CLASS=getattr(modal.gpu, GPU.split(":")[0])(count=NGPU, size=GPU.split(":")[1])
+else:
+    GPU_CLASS=getattr(modal.gpu, GPU)(count=NGPU)

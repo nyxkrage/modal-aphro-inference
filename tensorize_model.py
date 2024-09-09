@@ -1,5 +1,5 @@
 import modal
-from common import MODELS_VOLUME, MODELS_DIR, MODEL_NAME, APHRO_IMAGE, GPU_CLASS, MODELS_VOLUME, MODELS_DIR, MODEL_NAME
+from common import MODELS_VOLUME, MODELS_DIR, MODEL_NAME, APHRO_IMAGE, GPU_CLASS, MODELS_VOLUME, MODELS_DIR, MODEL_NAME, NGPU
 
 try:
     volume = modal.Volume.lookup(MODELS_VOLUME, create_if_missing=False)
@@ -19,9 +19,14 @@ def tensorize_model():
     engine_args = EngineArgs(
         model=MODELS_DIR + "/" + MODEL_NAME,
         max_model_len=512,
+        tensor_parallel_size=NGPU,
+        disable_custom_all_reduce=True
     )
 
-    tensorizer_config = TensorizerConfig(tensorizer_uri=MODELS_DIR + "/" + MODEL_NAME + "/model.tensors")
+    if NGPU > 1:
+        tensorizer_config = TensorizerConfig(tensorizer_uri=MODELS_DIR + "/" + MODEL_NAME + "/model-%03d.tensors")
+    else:
+        tensorizer_config = TensorizerConfig(tensorizer_uri=MODELS_DIR + "/" + MODEL_NAME + "/model.tensors")
 
     tensorize_aphrodite_model(engine_args, tensorizer_config)
 
